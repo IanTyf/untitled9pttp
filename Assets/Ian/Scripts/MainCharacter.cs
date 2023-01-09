@@ -84,7 +84,7 @@ public class MainCharacter : MonoBehaviour
         anim.SetTrigger("startWalk");
         while (transform.eulerAngles.y > 270f || transform.eulerAngles.y == 0f)
         {
-            transform.localEulerAngles -= Vector3.up * 90f * Time.deltaTime;
+            transform.localEulerAngles -= Vector3.up * 70f * Time.deltaTime;
             if (transform.localEulerAngles.y < 270f) transform.localEulerAngles = new Vector3(0f, 270f, 0f);
             yield return null;
         }
@@ -96,7 +96,7 @@ public class MainCharacter : MonoBehaviour
         state = MoveState.stop;
         while (transform.eulerAngles.y > 270f || transform.eulerAngles.y == 0f)
         {
-            transform.localEulerAngles -= Vector3.up * 90f * Time.deltaTime;
+            transform.localEulerAngles -= Vector3.up * 70f * Time.deltaTime;
             if (transform.localEulerAngles.y < 270f) transform.localEulerAngles = new Vector3(0f, 270f, 0f);
             yield return null;
         }
@@ -109,7 +109,7 @@ public class MainCharacter : MonoBehaviour
         state = MoveState.think;
         while (transform.eulerAngles.y >= 270f)
         {
-            transform.localEulerAngles += Vector3.up * 60f * Time.deltaTime;
+            transform.localEulerAngles += Vector3.up * 70f * Time.deltaTime;
             if (transform.localEulerAngles.y < 270f) transform.localEulerAngles = Vector3.zero;
             yield return null;
         }
