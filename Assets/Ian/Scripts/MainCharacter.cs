@@ -4,7 +4,7 @@ using UnityEngine;
 
 public enum MoveState
 {
-    walk, stop
+    walk, stop, think
 }
 
 public class MainCharacter : MonoBehaviour
@@ -15,6 +15,11 @@ public class MainCharacter : MonoBehaviour
 
     private Animator anim;
     private float actualSpeed;
+
+    private void Awake()
+    {
+        Services.mainCharacter = this;
+    }
 
     // Start is called before the first frame update
     void Start()
@@ -28,9 +33,16 @@ public class MainCharacter : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.Space))
         {
             if (state == MoveState.stop)
-                transitionToWalk();
+                StartCoroutine(transitionToWalk());
             else if (state == MoveState.walk)
-                transitionToStop();
+                StartCoroutine(transitionToStop());
+        }
+        if (Input.GetKeyDown(KeyCode.P))
+        {
+            if (state == MoveState.walk || state == MoveState.stop)
+                StartCoroutine(transitionToThink());
+            else if (state == MoveState.think)
+                StartCoroutine(transitionToWalk());
         }
 
         switch (state)
@@ -42,11 +54,14 @@ public class MainCharacter : MonoBehaviour
             case MoveState.walk:
                 walk();
                 break;
+            case MoveState.think:
+                think();
+                break;
         }
     }
 
     private void walk()
-    { 
+    {
         actualSpeed += Time.deltaTime * easeFactor;
         if (actualSpeed >= walkSpeed) actualSpeed = walkSpeed;
         transform.position += Vector3.left * actualSpeed * Time.deltaTime;
@@ -59,15 +74,60 @@ public class MainCharacter : MonoBehaviour
         transform.position += Vector3.left * actualSpeed * Time.deltaTime;
     }
 
-    private void transitionToWalk()
+    private void think()
     {
-        state = MoveState.walk;
-        anim.SetTrigger("startWalk");
+        
     }
 
-    private void transitionToStop()
+    IEnumerator transitionToWalk()
+    {
+        anim.SetTrigger("startWalk");
+        while (transform.eulerAngles.y > 270f || transform.eulerAngles.y == 0f)
+        {
+            transform.localEulerAngles -= Vector3.up * 90f * Time.deltaTime;
+            if (transform.localEulerAngles.y < 270f) transform.localEulerAngles = new Vector3(0f, 270f, 0f);
+            yield return null;
+        }
+        state = MoveState.walk;
+    }
+
+    IEnumerator transitionToStop()
     {
         state = MoveState.stop;
-        anim.SetTrigger("stopWalk");
+        while (transform.eulerAngles.y > 270f || transform.eulerAngles.y == 0f)
+        {
+            transform.localEulerAngles -= Vector3.up * 90f * Time.deltaTime;
+            if (transform.localEulerAngles.y < 270f) transform.localEulerAngles = new Vector3(0f, 270f, 0f);
+            yield return null;
+        }
+        anim.SetTrigger("startStop");
+    }
+
+    IEnumerator transitionToThink()
+    {
+        anim.SetTrigger("startThink");
+        state = MoveState.think;
+        while (transform.eulerAngles.y >= 270f)
+        {
+            transform.localEulerAngles += Vector3.up * 60f * Time.deltaTime;
+            if (transform.localEulerAngles.y < 270f) transform.localEulerAngles = Vector3.zero;
+            yield return null;
+        }
+    }
+
+    public void Think()
+    {
+        if (state != MoveState.think)
+        {
+            StartCoroutine(transitionToThink());
+        }
+    }
+
+    public void StopThink()
+    {
+        if (state == MoveState.think)
+        {
+            StartCoroutine(transitionToWalk());
+        }
     }
 }

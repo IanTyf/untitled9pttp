@@ -5,4 +5,5 @@ using UnityEngine;
 public static class Services
 {
     public static TextDisplay textDisplay;
+    public static MainCharacter mainCharacter;
 }
