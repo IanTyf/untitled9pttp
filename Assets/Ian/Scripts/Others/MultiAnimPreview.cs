@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEditor;
+using System.Collections.Generic;
 using System.Collections;
 
 public class MultiAnimPreview: EditorWindow {
@@ -12,6 +13,20 @@ public class MultiAnimPreview: EditorWindow {
 	}
 	static Styles s_Styles;
 
+	protected class Anim
+	{
+		public GameObject gameObject;
+		public AnimationClip clip;
+		public float time;
+		public bool selected;
+
+		public Anim()
+		{
+			time = 0f;
+			selected = true;
+		}
+	}
+
 	protected GameObject go;
 	protected GameObject go2;
 	protected AnimationClip animationClip;
@@ -21,6 +36,9 @@ public class MultiAnimPreview: EditorWindow {
 	protected bool animationMode = false;
 	protected bool isPlayingAll = false;
 
+
+	protected List<Anim> anims = new List<Anim>();
+
 	[MenuItem("Benbees/Multi-Anim Preview", false, 2000)]
 	public static void DoWindow()
 	{
@@ -28,7 +46,18 @@ public class MultiAnimPreview: EditorWindow {
 	}
 
 	public void OnEnable()
-	{		
+	{
+		anims.Add(new Anim());
+		anims.Add(new Anim());
+	}
+
+	private void OnSelectionChange()
+	{
+		GameObject go = Selection.activeGameObject;
+		if (go != null)
+		{
+			//foreach ()
+		}
 	}
 
 	public void OnGUI()
@@ -44,6 +73,11 @@ public class MultiAnimPreview: EditorWindow {
 		{
 			ToggleAnimationMode();
 			Debug.Log(AnimationMode.InAnimationMode());
+		}
+
+		if (GUILayout.Button("Add", EditorStyles.toolbarButton))
+		{
+			AddAnim();
 		}
 
 		GUILayout.FlexibleSpace();
@@ -74,6 +108,7 @@ public class MultiAnimPreview: EditorWindow {
 		
 		EditorGUILayout.BeginVertical();
 
+		/*
 		go = EditorGUILayout.ObjectField(go, typeof(GameObject), true) as GameObject;
 		if (go != null)
 		{
@@ -101,13 +136,34 @@ public class MultiAnimPreview: EditorWindow {
 			else if (AnimationMode.InAnimationMode())
 				AnimationMode.StopAnimationMode();
 		}
+		*/
 
+		foreach (Anim anim in anims)
+		{
+			EditorGUILayout.BeginHorizontal();
+			anim.selected = EditorGUILayout.Toggle(anim.selected);
+			anim.selected = EditorGUILayout.Toggle(anim.selected);
+			anim.gameObject = EditorGUILayout.ObjectField(anim.gameObject, typeof(GameObject), true) as GameObject;
+			EditorGUILayout.EndHorizontal();
+			if (anim.gameObject != null)
+			{
+				anim.clip = EditorGUILayout.ObjectField(anim.clip, typeof(AnimationClip), false) as AnimationClip;
+				if (anim.clip != null)
+				{
+					float startTime = 0.0f;
+					float stopTime = anim.clip.length;
+					anim.time = EditorGUILayout.Slider(anim.time, startTime, stopTime);
+				}
+				else if (AnimationMode.InAnimationMode())	AnimationMode.StopAnimationMode();
+			}
+		}
 
 		EditorGUILayout.EndVertical();
 	}
 
 	void Update()
 	{
+		/*
 		if ((go == null) || (animationClip == null) || (go2 == null) || (animationClip2 == null))
 			return;
 
@@ -150,6 +206,56 @@ public class MultiAnimPreview: EditorWindow {
 			SceneView.RepaintAll();
 			Repaint();
 		}
+		*/
+
+		if (isPlayingAll)
+		{
+
+			// do this bc the first few frames are always super slow, and the animation would snap to 0.33 or something immediately, which is not good
+			if (Time.deltaTime < 0.1f)
+			{
+				foreach (Anim anim in anims)
+				{
+					if (anim.clip != null)
+						anim.time += Time.deltaTime;
+				}
+			}
+			else
+			{
+				// do this bc for some reason the frame rate will stay at lowest if time remains zero.. no clue why
+				foreach (Anim anim in anims)
+				{
+					if (anim.clip != null)
+						anim.time += 0.005f;
+				}
+			}
+
+			Debug.Log(Time.deltaTime);
+		}
+
+		if (!EditorApplication.isPlaying && AnimationMode.InAnimationMode())
+		{
+			AnimationMode.BeginSampling();
+			foreach (Anim anim in anims)
+			{
+				if (anim.gameObject == null || anim.clip == null) continue;
+
+				Animator animator = anim.gameObject.GetComponent<Animator>();
+				if (animator != null && animator.runtimeAnimatorController == null)
+				{
+
+				}
+				else
+				{
+					AnimationMode.SampleAnimationClip(anim.gameObject, anim.clip, anim.time);
+				}
+				Repaint();
+			}
+			AnimationMode.EndSampling();
+
+			SceneView.RepaintAll();
+			Repaint();
+		}
 	}
 
 	void ToggleAnimationMode()
@@ -174,8 +280,19 @@ public class MultiAnimPreview: EditorWindow {
 	}
 
 	void Reset()
-	{
+	{	
+		/*
 		time = 0f;
 		time2 = 0f;
+		*/
+		foreach (Anim anim in anims)
+		{
+			anim.time = 0f;
+		}
+	}
+
+	void AddAnim()
+	{
+		anims.Add(new Anim());
 	}
 }
