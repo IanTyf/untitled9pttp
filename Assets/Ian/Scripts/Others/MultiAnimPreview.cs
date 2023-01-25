@@ -19,11 +19,13 @@ public class MultiAnimPreview: EditorWindow {
 		public AnimationClip clip;
 		public float time;
 		public bool selected;
+		public bool isLooping;
 
 		public Anim()
 		{
 			time = 0f;
 			selected = true;
+			isLooping = false;
 		}
 	}
 
@@ -78,6 +80,11 @@ public class MultiAnimPreview: EditorWindow {
 		if (GUILayout.Button("Add", EditorStyles.toolbarButton))
 		{
 			AddAnim();
+		}
+
+		if (GUILayout.Button("Delete", EditorStyles.toolbarButton))
+		{
+			DeleteAnim();
 		}
 
 		GUILayout.FlexibleSpace();
@@ -141,8 +148,8 @@ public class MultiAnimPreview: EditorWindow {
 		foreach (Anim anim in anims)
 		{
 			EditorGUILayout.BeginHorizontal();
-			anim.selected = EditorGUILayout.Toggle(anim.selected);
-			anim.selected = EditorGUILayout.Toggle(anim.selected);
+			EditorGUIUtility.labelWidth = 55f;
+			anim.selected = EditorGUILayout.Toggle("selected", anim.selected, new GUILayoutOption[]{});
 			anim.gameObject = EditorGUILayout.ObjectField(anim.gameObject, typeof(GameObject), true) as GameObject;
 			EditorGUILayout.EndHorizontal();
 			if (anim.gameObject != null)
@@ -152,10 +159,16 @@ public class MultiAnimPreview: EditorWindow {
 				{
 					float startTime = 0.0f;
 					float stopTime = anim.clip.length;
+
+					EditorGUILayout.BeginHorizontal();
+					anim.isLooping = EditorGUILayout.Toggle("looping", anim.isLooping);
 					anim.time = EditorGUILayout.Slider(anim.time, startTime, stopTime);
+					EditorGUILayout.EndHorizontal();
 				}
 				else if (AnimationMode.InAnimationMode())	AnimationMode.StopAnimationMode();
 			}
+
+			DrawUILine(Color.gray);
 		}
 
 		EditorGUILayout.EndVertical();
@@ -207,34 +220,68 @@ public class MultiAnimPreview: EditorWindow {
 			Repaint();
 		}
 		*/
-
-		if (isPlayingAll)
-		{
-
-			// do this bc the first few frames are always super slow, and the animation would snap to 0.33 or something immediately, which is not good
-			if (Time.deltaTime < 0.1f)
-			{
-				foreach (Anim anim in anims)
-				{
-					if (anim.clip != null)
-						anim.time += Time.deltaTime;
-				}
-			}
-			else
-			{
-				// do this bc for some reason the frame rate will stay at lowest if time remains zero.. no clue why
-				foreach (Anim anim in anims)
-				{
-					if (anim.clip != null)
-						anim.time += 0.005f;
-				}
-			}
-
-			Debug.Log(Time.deltaTime);
-		}
+		//Debug.Log(focusedWindow.ToString());
+		if(!focusedWindow.ToString().Equals(" (MultiAnimPreview)")) return;
+		
 
 		if (!EditorApplication.isPlaying && AnimationMode.InAnimationMode())
 		{
+			if (isPlayingAll)
+			{
+
+				// do this bc the first few frames are always super slow, and the animation would snap to 0.33 or something immediately, which is not good
+				if (Time.deltaTime < 0.1f)
+				{
+					foreach (Anim anim in anims)
+					{
+						if (anim.clip != null && anim.selected)
+                        {
+							float oldT = anim.time; // save the time to check for animation event that should occur here
+
+							anim.time += Time.deltaTime;
+							if (anim.isLooping && anim.time >= anim.clip.length) anim.time = anim.time - anim.clip.length;
+
+							foreach (AnimationEvent evt in anim.clip.events)
+                            {
+								if (evt.time >= oldT && evt.time < anim.time)
+                                {
+									// call the animation event
+									Debug.Log(evt.functionName);
+									anim.gameObject.SendMessage(evt.functionName);
+									
+                                }
+                            }
+                        }
+					}
+				}
+				else
+				{
+					// do this bc for some reason the frame rate will stay at lowest if time remains zero.. no clue why
+					foreach (Anim anim in anims)
+					{
+						if (anim.clip != null && anim.selected)
+                        {
+							float oldT = anim.time; // save the time to check for animation event that should occur here
+
+							anim.time += 0.005f;
+							if (anim.isLooping && anim.time >= anim.clip.length) anim.time = anim.time - anim.clip.length;
+
+							foreach (AnimationEvent evt in anim.clip.events)
+							{
+								if (evt.time >= oldT && evt.time < anim.time)
+								{
+									// call the animation event
+									anim.gameObject.SendMessage(evt.functionName);
+								}
+							}
+						}
+					}
+				}
+
+				//Debug.Log(Time.deltaTime);
+			}
+
+
 			AnimationMode.BeginSampling();
 			foreach (Anim anim in anims)
 			{
@@ -271,6 +318,11 @@ public class MultiAnimPreview: EditorWindow {
 	{
 		//time = 0f;
 		//time2 = 0f;
+		if (!AnimationMode.InAnimationMode())
+        {
+			AnimationMode.StartAnimationMode();
+			Debug.Log("started playing all");
+        }
 	}
 
 	void StopPlayAll()
@@ -289,10 +341,33 @@ public class MultiAnimPreview: EditorWindow {
 		{
 			anim.time = 0f;
 		}
+
+		AnimationMode.StopAnimationMode();
 	}
 
 	void AddAnim()
 	{
 		anims.Add(new Anim());
+	}
+
+	void DeleteAnim()
+    {
+		for (int i=anims.Count-1; i>=0; i--)
+        {
+			if (anims[i].selected)
+            {
+				anims.RemoveAt(i);
+            }
+        }
+    }
+
+	public static void DrawUILine(Color color, int thickness = 2, int padding = 10)
+	{
+		Rect r = EditorGUILayout.GetControlRect(GUILayout.Height(padding + thickness));
+		r.height = thickness;
+		r.y += padding / 2;
+		r.x -= 2;
+		r.width += 6;
+		EditorGUI.DrawRect(r, color);
 	}
 }
