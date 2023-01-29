@@ -6,4 +6,5 @@ public static class Services
 {
     public static TextDisplay textDisplay;
     public static MainCharacter mainCharacter;
+    public static aiManager aiManager;
 }
